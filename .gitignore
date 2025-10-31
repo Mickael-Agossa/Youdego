@@ -1,0 +1,17 @@
+node_modules
+
+# Never commit env files
+.env
+.env.*
+!.env.example
+!.env.exemple
+
+# Local docker overrides
+docker-compose.override.yml
+
+# Logs & misc
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log

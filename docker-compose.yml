@@ -1,18 +1,28 @@
-version: '3.8'
 services:
-  mongo:
-    image: mongo:latest
-    container_name: mongodb_container
+  postgres:
+    image: postgres:15
+    container_name: youdego_postgres
     restart: always
-    ports:
-      - "27017:27017"
-    volumes:
-      - mongo_data:/data/db
     environment:
-      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER:-root}
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-password}
+      POSTGRES_USER: ${DB_USER:?DB_USER not set}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD not set}
+      POSTGRES_DB: ${DB_NAME:?DB_NAME not set}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  backend:
+    build: .
+    container_name: youdego_backend
+    restart: always
+    depends_on:
+      - postgres
+    ports:
+      - "5001:5000"
+    env_file:
+      - .env
+    command: npm run dev
 
 volumes:
-  mongo_data:
-    driver: local
-
+  postgres_data:
