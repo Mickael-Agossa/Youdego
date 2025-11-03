@@ -1,12 +1,27 @@
-const express = require('express');
-const cors = require('cors');
-const routes = require('./routes');
+import express from "express";
+import cookieParser from "cookie-parser";
+import morgan from "morgan";
+import cors from "cors";
+import rateLimit from "express-rate-limit";
+import userRoutes from "./routes/user.routes.js";
+import { loggerMiddleware } from "./middlewares/logger.js";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 const app = express();
 
-app.use(cors());
 app.use(express.json());
-app.use('/api', routes);
+app.use(cookieParser());
+app.use(morgan("dev"));
+app.use(loggerMiddleware);
+app.use(cors({ origin: process.env.APP_URL, credentials: true }));
 
+app.use(rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+}));
 
-module.exports = app;
+app.use("/api/users", userRoutes);
+
+export default app;

@@ -1,0 +1,61 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                  String    @id @default(uuid())
+  fullname            String?
+  firstname           String?
+  lastname            String?
+  phone               String    @unique
+  email               String?   @unique
+  sexe                String?
+  role                Role      @default(CLIENT)
+  isWhatsappVerified  Boolean   @default(false)
+  lastActiveAt        DateTime? 
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  // Relation avec les codes OTP
+  otpCodes            OTPCode[]
+  accessLogs          AccessLog[]
+
+  @@map("users")
+}
+
+model OTPCode {
+  id          String   @id @default(uuid())
+  code        String
+  user        User     @relation(fields: [userId], references: [id])
+  userId      String
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+  used        Boolean  @default(false)
+
+  @@map("otp_codes")
+}
+
+enum Role {
+  CLIENT
+  COMMERCANT
+  LIVREUR
+  ADMIN
+}
+
+model AccessLog {
+  id        String   @id @default(uuid())
+  user      User?    @relation(fields: [userId], references: [id])
+  userId    String?
+  route     String
+  method    String
+  ip        String
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@map("access_logs")
+}
