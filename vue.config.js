@@ -10,6 +10,7 @@ module.exports = defineConfig({
     manifestPath: 'manifest.json',
     workboxPluginMode: 'GenerateSW',
     workboxOptions: {
+      swDest: 'sw.js',
       skipWaiting: true,
       clientsClaim: true,
       navigateFallback: '/index.html',
