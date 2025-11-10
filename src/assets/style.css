@@ -1,3 +1,8 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Police par défaut */
+html, body, #app {
+  @apply font-sans antialiased;
+}

@@ -5,28 +5,40 @@ import { register } from 'register-service-worker'
 if (process.env.NODE_ENV === 'production') {
   register(`${process.env.BASE_URL}service-worker.js`, {
     ready () {
-      console.log(
-        'App is being served from cache by a service worker.\n' +
-        'For more details, visit https://goo.gl/AFskqB'
-      )
+      console.log('PWA prête (cache).')
     },
-    registered () {
-      console.log('Service worker has been registered.')
+    registered (registration) {
+      console.log('Service worker enregistré.')
+      // Vérification périodique des updates
+      setInterval(() => {
+        registration.update()
+      }, 1000 * 60 * 5) // toutes les 5 minutes
     },
     cached () {
-      console.log('Content has been cached for offline use.')
+      console.log('Contenu mis en cache pour usage offline.')
     },
     updatefound () {
-      console.log('New content is downloading.')
+      console.log('Nouveau contenu en cours de téléchargement…')
     },
-    updated () {
-      console.log('New content is available; please refresh.')
+    updated (registration) {
+      console.log('Nouveau contenu disponible. Activation immédiate…')
+      // Force activation immédiate
+      if (registration.waiting) {
+        registration.waiting.postMessage({ type: 'SKIP_WAITING' })
+      }
+      // Rechargement de la page pour servir la nouvelle version
+      window.location.reload()
     },
     offline () {
-      console.log('No internet connection found. App is running in offline mode.')
+      console.log('Connexion internet absente, mode hors-ligne.')
     },
     error (error) {
-      console.error('Error during service worker registration:', error)
+      console.error('Erreur d\'enregistrement SW:', error)
     }
   })
 }
+
+// Ecoute du message skipWaiting
+navigator.serviceWorker?.addEventListener('controllerchange', () => {
+  console.log('Service worker actif mis à jour.')
+})
