@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-white relative overflow-hidden" ref="setContainer">
+  <div :class="['min-h-screen relative overflow-hidden', showSplash ? 'bg-[#8C0004]' : 'bg-white']" ref="setContainer">
     <!-- Splash screen -->
     <div v-if="showSplash" class="absolute inset-0 flex items-center justify-center bg-[#8C0004] text-white">
       <div class="flex flex-col items-center">
@@ -147,8 +147,19 @@ function setContainer(el: HTMLElement | null) {
   containerEl.value = el
 }
 
+function setThemeColor(color: string) {
+  const meta = document.querySelector('meta[name="theme-color"]') as HTMLMetaElement | null
+  if (meta) meta.setAttribute('content', color)
+}
+
 onMounted(() => {
-  setTimeout(() => (showSplash.value = false), 1800)
+  // Uniformiser l’entête avec la couleur du splash
+  setThemeColor('#8C0004')
+  setTimeout(() => {
+    // Retour à un header blanc pour le reste de l’app
+    setThemeColor('#ffffff')
+    showSplash.value = false
+  }, 1800)
   if (containerEl.value) {
     containerEl.value.addEventListener('touchstart', handleTouchStart, { passive: true })
     containerEl.value.addEventListener('touchend', handleTouchEnd, { passive: true })
@@ -156,6 +167,8 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  // Sécurise le header blanc en quittant cette vue
+  setThemeColor('#ffffff')
   if (containerEl.value) {
     containerEl.value.removeEventListener('touchstart', handleTouchStart)
     containerEl.value.removeEventListener('touchend', handleTouchEnd)
