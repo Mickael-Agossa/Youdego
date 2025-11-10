@@ -4,7 +4,7 @@
     <div class="flex items-center justify-between px-4 pt-4">
       <div class="flex items-center space-x-3">
         <img
-          src="https://via.placeholder.com/48"
+          src="https://vaybe.tech/_nuxt/product_designer_homme_sans_logo.DPf1CHnK.png"
           alt="avatar"
           class="w-12 h-12 rounded-full object-cover"
         />
@@ -124,8 +124,10 @@
       </div>
     </div>
   </div>
+    <BottomNav />
 </template>
 
 <script setup>
+import BottomNav from '@/components/BottomNav.vue'
 // Aucun script spécifique pour l'instant
 </script>

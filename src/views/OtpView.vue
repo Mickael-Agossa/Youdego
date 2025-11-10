@@ -9,10 +9,21 @@
 
     <form @submit.prevent="verify" class="space-y-6">
       <div class="flex items-center justify-between space-x-2">
-        <input v-for="i in 6" :key="i" ref="otpRefs[i-1]" v-model="otp[i-1]" maxlength="1"
-          inputmode="numeric" pattern="[0-9]*" type="text"
+        <input
+          v-for="(_, i) in 6"
+          :key="i"
+          :value="otp[i]"
+          @input="handleInput($event, i)"
+          @keydown="onKeydown($event, i)"
+          @paste="onPaste($event, i)"
+          inputmode="numeric"
+          autocomplete="one-time-code"
+          pattern="[0-9]*"
+          type="tel"
           class="w-12 h-12 text-center text-lg rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#8C0004]"
-          @input="onInput(i-1)" @keydown.backspace.prevent="onBackspace(i-1)" />
+          :ref="el => setOtpRef(el, i)"
+          maxlength="1"
+        />
       </div>
 
       <div class="text-sm text-gray-500" v-if="remaining > 0">
@@ -36,7 +47,11 @@ const store = useAuthStore()
 const router = useRouter()
 
 const otp = ref<string[]>(Array(6).fill(''))
-const otpRefs = Array.from({ length: 6 }, () => ref<HTMLInputElement | null>(null))
+const otpRefs = ref<Array<HTMLInputElement | null>>([])
+
+function setOtpRef(el: any, idx: number) {
+  otpRefs.value[idx] = (el as HTMLInputElement) || null
+}
 
 const remaining = computed(() => store.remainingSeconds)
 const canResend = computed(() => store.canResend)
@@ -44,36 +59,79 @@ const mm = computed(() => String(Math.floor(remaining.value / 60)).padStart(2, '
 const ss = computed(() => String(remaining.value % 60).padStart(2, '0'))
 const maskedPhone = computed(() => store.phoneLocal ? store.phoneLocal.replace(/^(\d{3})\d{4}(\d{3})$/, '$1••••$2') : '')
 
-function onInput(idx: number) {
-  const val = otp.value[idx]
-  if (/^\d$/.test(val)) {
-    if (idx < 5) otpRefs[idx + 1].value?.focus()
-  } else {
-    otp.value[idx] = ''
+function focusIndex(i: number) {
+  const el = otpRefs.value[i]
+  el?.focus()
+  el?.select()
+}
+
+function distribute(digits: string) {
+  const ds = digits.replace(/\D/g, '').slice(0, 6)
+  for (let i = 0; i < 6; i++) {
+    otp.value[i] = ds[i] || ''
+  }
+  const firstEmpty = otp.value.findIndex(d => !d)
+  focusIndex(firstEmpty === -1 ? 5 : firstEmpty)
+}
+
+function handleInput(e: Event, idx: number) {
+  const target = e.target as HTMLInputElement
+  const val = (target.value || '').replace(/\D/g, '')
+
+  // Collage rapide (plusieurs chiffres d'un coup)
+  if (val.length > 1) {
+    distribute(val)
+    return
+  }
+
+  otp.value[idx] = val
+  if (val && idx < 5) {
+    focusIndex(idx + 1)
   }
 }
-function onBackspace(idx: number) {
-  if (otp.value[idx]) {
-    otp.value[idx] = ''
-  } else if (idx > 0) {
-    otpRefs[idx - 1].value?.focus()
+
+function onKeydown(e: KeyboardEvent, idx: number) {
+  const key = e.key
+  if (key === 'Backspace') {
+    if (otp.value[idx]) {
+      otp.value[idx] = ''
+    } else if (idx > 0) {
+      otp.value[idx - 1] = ''
+      focusIndex(idx - 1)
+    }
+    e.preventDefault()
+  } else if (key === 'ArrowLeft' && idx > 0) {
+    focusIndex(idx - 1)
+    e.preventDefault()
+  } else if (key === 'ArrowRight' && idx < 5) {
+    focusIndex(idx + 1)
+    e.preventDefault()
   }
+}
+
+function onPaste(e: ClipboardEvent, _idx: number) {
+  const pasted = e.clipboardData?.getData('text') || ''
+  const digits = pasted.replace(/\D/g, '')
+  if (!digits) return
+  e.preventDefault()
+  distribute(digits)
 }
 
 function resend() {
   if (!canResend.value) return
   store.sendCode()
+  otp.value = Array(6).fill('')
+  focusIndex(0)
 }
 
 function verify() {
   const code = otp.value.join('')
   if (/^\d{6}$/.test(code)) {
-    // plus tard: axios pour vérifier
     router.push('/dashboard')
   }
 }
 
 onMounted(() => {
-  otpRefs[0].value?.focus()
+  focusIndex(0)
 })
 </script>
