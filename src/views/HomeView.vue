@@ -159,7 +159,7 @@ onMounted(() => {
     // Retour à un header blanc pour le reste de l’app
     setThemeColor('#ffffff')
     showSplash.value = false
-  }, 1800)
+  }, 2500)
   if (containerEl.value) {
     containerEl.value.addEventListener('touchstart', handleTouchStart, { passive: true })
     containerEl.value.addEventListener('touchend', handleTouchEnd, { passive: true })
