@@ -1,10 +1,10 @@
 <template>
-  <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 flex justify-around items-center py-3 px-2 shadow-lg z-50">
+  <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 flex justify-between items-center py-3 px-4 shadow-lg z-50">
     <button
       v-for="item in navItems"
       :key="item.name"
       @click="activeTab = item.name"
-      class="flex flex-col items-center justify-center flex-1 mx-1 transition-all duration-300"
+      class="flex flex-col items-center justify-center flex-1 transition-all duration-300"
     >
       <div
         class="flex flex-col items-center justify-center p-3 rounded-2xl transition-all duration-300"

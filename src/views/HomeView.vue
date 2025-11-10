@@ -156,7 +156,6 @@ onMounted(() => {
   // Uniformiser l’entête avec la couleur du splash
   setThemeColor('#8C0004')
   setTimeout(() => {
-    // Retour à un header blanc pour le reste de l’app
     setThemeColor('#ffffff')
     showSplash.value = false
   }, 2500)
