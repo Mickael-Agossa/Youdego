@@ -1,0 +1,404 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Youdégo API",
+    "version": "1.0.0",
+    "description": "Documentation interactive pour tester l'API Youdégo"
+  },
+  "servers": [
+    { "url": "http://localhost:5000/api" }
+  ],
+  "components": {
+    "securitySchemes": {
+      "cookieAuth": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "token"
+      }
+    },
+    "schemas": {
+      "RegisterRequest": {
+        "type": "object",
+        "properties": {
+          "fullname": {"type": "string"},
+          "phone": {"type": "string"},
+          "email": {"type": "string"},
+          "sexe": {"type": "string"}
+        },
+        "required": ["phone"]
+      },
+      "OTPRequest": {
+        "type": "object",
+        "properties": {
+          "userId": {"type": "string"},
+          "code": {"type": "string"}
+        },
+        "required": ["userId", "code"]
+      },
+      "ResendOTPRequest": {
+        "type": "object",
+        "properties": { "userId": {"type": "string"} },
+        "required": ["userId"]
+      },
+      "CreateLivreurRequest": {
+        "type": "object",
+        "properties": {
+          "fullname": {"type": "string"},
+          "phone": {"type": "string"},
+          "email": {"type": "string"},
+          "sexe": {"type": "string"}
+        },
+        "required": ["fullname", "phone"]
+      },
+      "CourierLocation": {
+        "type": "object",
+        "properties": {
+          "latitude": {"type": "number"},
+          "longitude": {"type": "number"}
+        },
+        "required": ["latitude", "longitude"]
+      },
+      "CourierAvailability": {
+        "type": "object",
+        "properties": { "active": {"type": "boolean"} },
+        "required": ["active"]
+      },
+      "CreateDeliveryCurrent": {
+        "type": "object",
+        "properties": {
+          "notes": {"type": "string"},
+          "pickupSource": {"type": "string", "enum": ["CURRENT_LOCATION"]},
+          "pickupLatitude": {"type": "number"},
+          "pickupLongitude": {"type": "number"},
+          "pickupComment": {"type": "string"},
+          "dropoffSource": {"type": "string", "enum": ["CURRENT_LOCATION", "PREDEFINED_LOCATION"]},
+          "dropoffLatitude": {"type": "number"},
+          "dropoffLongitude": {"type": "number"},
+          "dropoffLocationId": {"type": "string"},
+          "dropoffComment": {"type": "string"}
+        },
+        "required": ["pickupSource", "dropoffSource"],
+        "oneOf": [
+          {"required": ["pickupLatitude", "pickupLongitude"]}
+        ]
+      },
+      "CreateDeliveryPredefined": {
+        "type": "object",
+        "properties": {
+          "notes": {"type": "string"},
+          "pickupSource": {"type": "string", "enum": ["PREDEFINED_LOCATION"]},
+          "pickupLocationId": {"type": "string"},
+          "pickupComment": {"type": "string"},
+          "dropoffSource": {"type": "string", "enum": ["CURRENT_LOCATION", "PREDEFINED_LOCATION"]},
+          "dropoffLatitude": {"type": "number"},
+          "dropoffLongitude": {"type": "number"},
+          "dropoffLocationId": {"type": "string"},
+          "dropoffComment": {"type": "string"}
+        },
+        "required": ["pickupSource", "pickupLocationId", "dropoffSource"]
+      },
+      "DeclineRequest": {
+        "type": "object",
+        "properties": { "reason": {"type": "string"} }
+      },
+      "RateRequest": {
+        "type": "object",
+        "properties": {
+          "score": {"type": "integer", "minimum": 1, "maximum": 5},
+          "comment": {"type": "string"}
+        },
+        "required": ["score"]
+      },
+      "InitiatePaymentRequest": {
+        "type": "object",
+        "properties": {
+          "amount": {"type": "integer"},
+          "currency": {"type": "string", "example": "XOF"},
+          "payerPhone": {"type": "string", "example": "2299xxxxxxx"},
+          "deliveryId": {"type": "string"},
+          "reason": {"type": "string"}
+        },
+        "required": ["amount", "payerPhone"]
+      }
+    }
+  },
+  "paths": {
+    "/auth/register": {
+      "post": {
+        "summary": "Enregistrer un utilisateur et demander un OTP de connexion",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {"$ref": "#/components/schemas/RegisterRequest"}
+            }
+          }
+        },
+        "responses": {"200": {"description": "Utilisateur créé et OTP envoyé"}}
+      }
+    },
+    "/auth/verify": {
+      "post": {
+        "summary": "Vérifier l'OTP pour finaliser l'inscription",
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/OTPRequest"}}}},
+        "responses": {"200": {"description": "Vérifié"}}
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "summary": "Demander un OTP de connexion",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {"type": "object", "properties": {"phone": {"type": "string"}}, "required": ["phone"]}
+            }
+          }
+        },
+        "responses": {"200": {"description": "OTP envoyé"}}
+      }
+    },
+    "/auth/verify-login": {
+      "post": {
+        "summary": "Vérifier l'OTP et se connecter (dépose un cookie)",
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/OTPRequest"}}}},
+        "responses": {"200": {"description": "Connecté, cookie token"}}
+      }
+    },
+    "/auth/resend-otp": {
+      "post": {
+        "summary": "Renvoyer un OTP",
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ResendOTPRequest"}}}},
+        "responses": {"200": {"description": "OTP renvoyé"}}
+      }
+    },
+    "/auth/admin/create-livreur": {
+      "post": {
+        "summary": "Créer un livreur (admin)",
+        "security": [{"cookieAuth": []}],
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CreateLivreurRequest"}}}},
+        "responses": {"201": {"description": "Créé"}, "403": {"description": "Role requis: ADMIN"}}
+      }
+    },
+
+    "/deliveries": {
+      "post": {
+        "summary": "Créer une livraison (CURRENT_LOCATION ou PREDEFINED_LOCATION)",
+        "security": [{"cookieAuth": []}],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {"oneOf": [ {"$ref": "#/components/schemas/CreateDeliveryCurrent"}, {"$ref": "#/components/schemas/CreateDeliveryPredefined"} ]}
+            }
+          }
+        },
+        "responses": {"201": {"description": "Créée (+ attribution si possible)"}}
+      }
+    },
+    "/deliveries/me": {
+      "get": {
+        "summary": "Mes livraisons (créateur ou livreur)",
+        "security": [{"cookieAuth": []}],
+        "responses": {"200": {"description": "OK"}}
+      }
+    },
+    "/deliveries/{id}": {
+      "get": {
+        "summary": "Détail d'une livraison",
+        "security": [{"cookieAuth": []}],
+        "parameters": [{"name": "id", "in": "path", "required": true, "schema": {"type": "string"}}],
+        "responses": {"200": {"description": "OK"}, "403": {"description": "Accès restreint"}, "404": {"description": "Introuvable"}}
+      }
+    },
+
+    "/deliveries/courier/availability": {
+      "post": {
+        "summary": "Activer/désactiver le statut disponible du livreur",
+        "security": [{"cookieAuth": []}],
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CourierAvailability"}}}},
+        "responses": {"200": {"description": "OK"}}
+      }
+    },
+    "/deliveries/courier/location": {
+      "post": {
+        "summary": "Envoyer la position courante du livreur (lat/lng)",
+        "security": [{"cookieAuth": []}],
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CourierLocation"}}}},
+        "responses": {"200": {"description": "Position mise à jour"}, "403": {"description": "Non actif"}}
+      }
+    },
+
+    "/deliveries/{id}/tracking": {
+      "get": {
+        "summary": "Suivi ponctuel d'une livraison",
+        "security": [{"cookieAuth": []}],
+        "parameters": [{"name": "id", "in": "path", "required": true, "schema": {"type": "string"}}],
+        "responses": {"200": {"description": "OK"}}
+      }
+    },
+    "/deliveries/{id}/stream": {
+      "get": {
+        "summary": "Suivi en temps réel (SSE)",
+        "security": [{"cookieAuth": []}],
+        "parameters": [{"name": "id", "in": "path", "required": true, "schema": {"type": "string"}}],
+        "responses": {"200": {"description": "Flux d'événements", "content": {"text/event-stream": {}}}}
+      }
+    },
+    "/deliveries/{id}/pickup": {
+      "post": {
+        "summary": "Marquer comme pris en charge",
+        "security": [{"cookieAuth": []}],
+        "parameters": [{"name": "id", "in": "path", "required": true, "schema": {"type": "string"}}],
+        "responses": {"200": {"description": "OK"}, "403": {"description": "Interdit"}}
+      }
+    },
+    "/deliveries/{id}/decline": {
+      "post": {
+        "summary": "Décliner une livraison (livreur)",
+        "security": [{"cookieAuth": []}],
+        "parameters": [{"name": "id", "in": "path", "required": true, "schema": {"type": "string"}}],
+        "requestBody": {"required": false, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/DeclineRequest"}}}},
+        "responses": {"200": {"description": "Déclinée"}, "429": {"description": "Limite atteinte"}}
+      }
+    },
+    "/deliveries/{id}/deliver": {
+      "post": {
+        "summary": "Marquer comme livrée",
+        "security": [{"cookieAuth": []}],
+        "parameters": [{"name": "id", "in": "path", "required": true, "schema": {"type": "string"}}],
+        "responses": {"200": {"description": "OK"}, "403": {"description": "Interdit"}}
+      }
+    },
+    "/deliveries/{id}/cancel": {
+      "post": {
+        "summary": "Annuler (admin)",
+        "security": [{"cookieAuth": []}],
+        "parameters": [{"name": "id", "in": "path", "required": true, "schema": {"type": "string"}}],
+        "responses": {"200": {"description": "Annulée"}, "403": {"description": "Interdit"}}
+      }
+    },
+    "/deliveries/admin/stats": {
+      "get": {
+        "summary": "Statistiques admin",
+        "security": [{"cookieAuth": []}],
+        "responses": {"200": {"description": "OK"}}
+      }
+    },
+    "/deliveries/admin/penalties": {
+      "get": {
+        "summary": "Lister les pénalités (admin)",
+        "security": [{"cookieAuth": []}],
+        "parameters": [
+          {"name": "userId", "in": "query", "required": false, "schema": {"type": "string"}},
+          {"name": "deliveryId", "in": "query", "required": false, "schema": {"type": "string"}}
+        ],
+        "responses": {"200": {"description": "OK"}}
+      }
+    },
+    "/deliveries/declines/me": {
+      "get": {
+        "summary": "Mes déclinaisons (livreur)",
+        "security": [{"cookieAuth": []}],
+        "responses": {"200": {"description": "OK"}}
+      }
+    },
+    "/deliveries/admin/declines": {
+      "get": {
+        "summary": "Lister les déclinaisons (admin)",
+        "security": [{"cookieAuth": []}],
+        "parameters": [
+          {"name": "courierId", "in": "query", "required": false, "schema": {"type": "string"}},
+          {"name": "deliveryId", "in": "query", "required": false, "schema": {"type": "string"}}
+        ],
+        "responses": {"200": {"description": "OK"}}
+      }
+    },
+    "/deliveries/{id}/rate": {
+      "post": {
+        "summary": "Noter la livraison",
+        "security": [{"cookieAuth": []}],
+        "parameters": [{"name": "id", "in": "path", "required": true, "schema": {"type": "string"}}],
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/RateRequest"}}}},
+        "responses": {"201": {"description": "Créée"}, "400": {"description": "Erreur de validation"}}
+      }
+    },
+    "/deliveries/{id}/rating": {
+      "get": {
+        "summary": "Récupérer la note d'une livraison",
+        "security": [{"cookieAuth": []}],
+        "parameters": [{"name": "id", "in": "path", "required": true, "schema": {"type": "string"}}],
+        "responses": {"200": {"description": "OK"}}
+      }
+    },
+    "/deliveries/courier/{courierId}/ratings/summary": {
+      "get": {
+        "summary": "Résumé des notes d'un livreur",
+        "security": [{"cookieAuth": []}],
+        "parameters": [{"name": "courierId", "in": "path", "required": true, "schema": {"type": "string"}}],
+        "responses": {"200": {"description": "OK"}}
+      }
+    },
+
+    "/map-locations": {
+      "get": {
+        "summary": "Lister les lieux prédéfinis (option q pour filtrer)",
+        "security": [{"cookieAuth": []}],
+        "parameters": [{"name": "q", "in": "query", "required": false, "schema": {"type": "string"}}],
+        "responses": {"200": {"description": "OK"}}
+      }
+    },
+    "/map-locations/{id}": {
+      "get": {
+        "summary": "Détail d'un lieu prédéfini",
+        "security": [{"cookieAuth": []}],
+        "parameters": [{"name": "id", "in": "path", "required": true, "schema": {"type": "string"}}],
+        "responses": {"200": {"description": "OK"}, "404": {"description": "Introuvable"}}
+      }
+    },
+    
+    "/payments/initiate": {
+      "post": {
+        "summary": "Initier un paiement MTN MoMo",
+        "security": [{"cookieAuth": []}],
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/InitiatePaymentRequest"}}}},
+        "responses": {"201": {"description": "Paiement initié"}, "502": {"description": "Erreur MoMo"}}
+      }
+    },
+    "/payments/me": {
+      "get": {
+        "summary": "Mes paiements",
+        "security": [{"cookieAuth": []}],
+        "responses": {"200": {"description": "OK"}}
+      }
+    },
+    "/payments/{id}": {
+      "get": {
+        "summary": "Détail d'un paiement",
+        "security": [{"cookieAuth": []}],
+        "parameters": [{"name": "id", "in": "path", "required": true, "schema": {"type": "string"}}],
+        "responses": {"200": {"description": "OK"}, "404": {"description": "Introuvable"}}
+      }
+    },
+    "/payments/{id}/status": {
+      "get": {
+        "summary": "Rafraîchir le statut du paiement (MoMo)",
+        "security": [{"cookieAuth": []}],
+        "parameters": [{"name": "id", "in": "path", "required": true, "schema": {"type": "string"}}],
+        "responses": {"200": {"description": "OK"}, "502": {"description": "Erreur MoMo"}}
+      }
+    },
+    "/payments/admin/list": {
+      "get": {
+        "summary": "Lister les paiements (admin)",
+        "security": [{"cookieAuth": []}],
+        "parameters": [
+          {"name": "userId", "in": "query", "schema": {"type": "string"}},
+          {"name": "deliveryId", "in": "query", "schema": {"type": "string"}},
+          {"name": "status", "in": "query", "schema": {"type": "string", "enum": ["PENDING","SUCCESS","FAILED","CANCELED"]}}
+        ],
+        "responses": {"200": {"description": "OK"}}
+      }
+    }
+  }
+}

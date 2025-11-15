@@ -14,16 +14,16 @@ export const authMiddleware = async (req, res, next) => {
 
     if (!user) return res.status(404).json({ message: "Utilisateur introuvable" });
 
-    // Vérifie inactivité
+  // Vérifier l'inactivité
     const now = new Date();
     if (user.lastActiveAt) {
-      const diff = (now - user.lastActiveAt) / (1000 * 60 * 60 * 24); // en jours
+  const diff = (now - user.lastActiveAt) / (1000 * 60 * 60 * 24); // en jours
       if (diff > MAX_INACTIVITY_DAYS) {
         return res.status(401).json({ message: "Session expirée pour inactivité" });
       }
     }
 
-    // Mise à jour de la dernière activité
+  // Mettre à jour la dernière activité
     await prisma.user.update({
       where: { id: user.id },
       data: { lastActiveAt: now },

@@ -1,27 +1,22 @@
-import express from "express";
-import cookieParser from "cookie-parser";
-import morgan from "morgan";
-import cors from "cors";
-import rateLimit from "express-rate-limit";
-import userRoutes from "./routes/user.routes.js";
-import { loggerMiddleware } from "./middlewares/logger.js";
-import dotenv from "dotenv";
-
-dotenv.config();
+import express from 'express';
+import cors from 'cors';
+import cookieParser from 'cookie-parser';
+import routes from './routes/index.js';
+import swaggerUi from 'swagger-ui-express';
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+const openapi = require('./docs/openapi.json');
 
 const app = express();
 
+app.use(cors());
 app.use(express.json());
 app.use(cookieParser());
-app.use(morgan("dev"));
-app.use(loggerMiddleware);
-app.use(cors({ origin: process.env.APP_URL, credentials: true }));
 
-app.use(rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100,
-}));
+// Regrouper toutes les routes sous /api
+app.use('/api', routes);
 
-app.use("/api/users", userRoutes);
+// Swagger UI
+app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(openapi, { explorer: true }));
 
 export default app;

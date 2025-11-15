@@ -25,6 +25,16 @@ model User {
   otpCodes            OTPCode[]
   accessLogs          AccessLog[]
 
+  // Relations de livraison
+  deliveriesCreated   Delivery[] @relation("DeliveriesCreated")
+  deliveriesAssigned  Delivery[] @relation("DeliveriesAssigned")
+  penalties           Penalty[]
+  ratingsReceived     DeliveryRating[] @relation("CourierRatings")
+  ratingsGiven        DeliveryRating[] @relation("CreatorRatings")
+  declines            DeliveryDecline[] @relation("CourierDeclines")
+  courierLocation     CourierLocation? @relation("CourierLocationUser")
+  paymentsCreated     Payment[]        @relation("PaymentsCreated")
+
   @@map("users")
 }
 
@@ -58,4 +68,204 @@ model AccessLog {
   createdAt DateTime @default(now())
 
   @@map("access_logs")
+}
+
+// Module de livraison
+
+model Delivery {
+  id           String          @id @default(uuid())
+  createdBy    User            @relation("DeliveriesCreated", fields: [createdById], references: [id])
+  createdById  String
+  assignedTo   User?           @relation("DeliveriesAssigned", fields: [assignedToId], references: [id])
+  assignedToId String?
+
+  pickupAddress  String?
+  dropoffAddress String?
+  notes          String?
+
+  // Nouvelle logique de source de localisation
+  pickupSource        DeliveryLocationSource?
+  pickupLocationId    String?
+  pickupLocation      MapLocation?        @relation("PickupMapLocation", fields: [pickupLocationId], references: [id])
+  pickupLatitude      Float?
+  pickupLongitude     Float?
+  pickupComment       String?
+
+  dropoffSource       DeliveryLocationSource?
+  dropoffLocationId   String?
+  dropoffLocation     MapLocation?        @relation("DropoffMapLocation", fields: [dropoffLocationId], references: [id])
+  dropoffLatitude     Float?
+  dropoffLongitude    Float?
+  dropoffComment      String?
+
+  status       DeliveryStatus  @default(CREATED)
+  createdAt    DateTime        @default(now())
+  assignedAt   DateTime?
+  pickedUpAt   DateTime?
+  deliveredAt  DateTime?
+  canceledAt   DateTime?
+
+  penalties    Penalty[]
+  ratings      DeliveryRating[] @relation("DeliveryRatings")
+  declines     DeliveryDecline[] @relation("DeliveryDeclines")
+  payments     Payment[]
+
+  @@map("deliveries")
+  @@index([createdById])
+  @@index([assignedToId])
+  @@index([status])
+  @@index([pickupLocationId])
+  @@index([dropoffLocationId])
+}
+
+enum DeliveryStatus {
+  CREATED
+  ASSIGNED
+  PICKED_UP
+  DELIVERED
+  CANCELED
+}
+
+model CourierLocation {
+  user           User     @relation("CourierLocationUser", fields: [userId], references: [id])
+  userId         String   @id
+  currentAddress String
+  latitude       Float?
+  longitude      Float?
+  isActive       Boolean  @default(false)
+  updatedAt      DateTime @default(now()) @updatedAt
+
+  @@map("courier_locations")
+}
+
+model Penalty {
+  id         String       @id @default(uuid())
+  user       User         @relation(fields: [userId], references: [id])
+  userId     String
+  delivery   Delivery?    @relation(fields: [deliveryId], references: [id])
+  deliveryId String?
+  type       PenaltyType
+  points     Int          @default(1)
+  reason     String?
+  createdAt  DateTime     @default(now())
+
+  @@map("penalties")
+  @@index([userId])
+  @@index([deliveryId])
+}
+
+enum PenaltyType {
+  DECLINE_ASSIGNMENT
+}
+
+enum DeliveryLocationSource {
+  CURRENT_LOCATION
+  PREDEFINED_LOCATION
+}
+
+// Evaluation / note du livreur pour une livraison
+model DeliveryRating {
+  id          String   @id @default(uuid())
+  delivery    Delivery @relation("DeliveryRatings", fields: [deliveryId], references: [id])
+  deliveryId  String   @unique
+  courier     User     @relation("CourierRatings", fields: [courierId], references: [id])
+  courierId   String
+  createdBy   User     @relation("CreatorRatings", fields: [createdById], references: [id])
+  createdById String
+  score       Int      // 1 à 5
+  comment     String?
+  createdAt   DateTime @default(now())
+
+  @@map("delivery_ratings")
+  @@index([courierId])
+  @@index([createdById])
+}
+
+// Historique des déclinaisons par les livreurs
+model DeliveryDecline {
+  id          String   @id @default(uuid())
+  delivery    Delivery @relation("DeliveryDeclines", fields: [deliveryId], references: [id])
+  deliveryId  String
+  courier     User     @relation("CourierDeclines", fields: [courierId], references: [id])
+  courierId   String
+  reason      String?
+  createdAt   DateTime @default(now())
+
+  @@map("delivery_declines")
+  @@index([courierId, createdAt])
+  @@index([deliveryId])
+}
+
+// Points de localisation prédéfinis sur la carte
+model MapLocation {
+  id          String    @id @default(uuid())
+  name        String
+  address     String?
+  latitude    Float?
+  longitude   Float?
+  active      Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+
+  deliveriesPickup  Delivery[] @relation("PickupMapLocation")
+  deliveriesDropoff Delivery[] @relation("DropoffMapLocation")
+
+  @@map("map_locations")
+  @@index([active])
+}
+
+// Paiements MTN MoMo
+
+enum PaymentProvider {
+  MTN_MOMO
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  CANCELED
+}
+
+enum PaymentEventType {
+  REQUEST
+  STATUS
+  CALLBACK
+  ERROR
+}
+
+model Payment {
+  id                String         @id @default(uuid())
+  createdBy         User           @relation("PaymentsCreated", fields: [createdById], references: [id])
+  createdById       String
+  delivery          Delivery?      @relation(fields: [deliveryId], references: [id])
+  deliveryId        String?
+  amount            Int
+  currency          String         @default("XOF")
+  provider          PaymentProvider
+  status            PaymentStatus  @default(PENDING)
+  providerReference String?        @unique
+  payerPhone        String
+  reason            String?
+  externalMessage   String?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  events            PaymentEvent[]
+
+  @@map("payments")
+  @@index([createdById])
+  @@index([deliveryId])
+  @@index([status])
+}
+
+model PaymentEvent {
+  id         String           @id @default(uuid())
+  payment    Payment          @relation(fields: [paymentId], references: [id])
+  paymentId  String
+  type       PaymentEventType
+  payload    Json?
+  createdAt  DateTime         @default(now())
+
+  @@map("payment_events")
+  @@index([paymentId, createdAt])
 }

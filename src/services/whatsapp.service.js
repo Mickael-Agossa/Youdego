@@ -1,11 +1,10 @@
-import fetch from "node-fetch";
-
 const ACCESS_TOKEN = process.env.META_WHATSAPP_TOKEN;
 const PHONE_NUMBER_ID = process.env.META_WHATSAPP_PHONE_ID;
 
 export async function sendWhatsAppMessageMeta(phone, message) {
   const url = `https://graph.facebook.com/v17.0/${PHONE_NUMBER_ID}/messages`;
   
+  // Node 18+ provides a global fetch API
   const res = await fetch(url, {
     method: "POST",
     headers: {

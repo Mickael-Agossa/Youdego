@@ -1,6 +1,8 @@
 node_modules
 
 # Never commit env files
+.env
+.env.*
 !.env.example
 !.env.exemple
 

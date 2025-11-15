@@ -6,6 +6,46 @@ import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
+// Création d'un compte livreur par un agent (admin)
+export const createLivreur = async (req, res) => {
+  try {
+    const { fullname, phone, email, sexe } = req.body;
+
+    if (!fullname || !phone) {
+      return res.status(400).json({ message: "fullname et phone sont obligatoires" });
+    }
+
+    const exists = await prisma.user.findUnique({ where: { phone } });
+    if (exists) return res.status(400).json({ message: "Ce numéro existe déjà" });
+
+    const user = await prisma.user.create({
+      data: {
+        fullname,
+        phone,
+        email,
+        sexe,
+        role: 'LIVREUR',
+      },
+    });
+
+    const code = generateOTP();
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 min
+    await prisma.oTPCode.create({ data: { code, userId: user.id, expiresAt } });
+
+    await sendWhatsAppMessageMeta(
+      phone,
+      `Bonjour, votre compte livreur Youdégo a été créé par un agent. Code d'activation: ${code}`
+    );
+
+    return res.status(201).json({ message: "Livreur créé, code envoyé sur WhatsApp", livreurId: user.id });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ message: "Erreur serveur" });
+  }
+};
+
+// Création d'un compte par n'importe quel utilisateur
+
 export const register = async (req, res) => {
   try {
     const { fullname, phone, email, sexe } = req.body;
@@ -14,7 +54,11 @@ export const register = async (req, res) => {
     if (user) return res.status(400).json({ message: "Ce numéro existe déjà" });
 
     user = await prisma.user.create({
-      data: { fullname, phone, email, sexe },
+      data: { fullname, 
+              phone, 
+              email, 
+              sexe,
+      },
     });
 
     const code = generateOTP();
@@ -29,6 +73,7 @@ export const register = async (req, res) => {
     res.status(500).json({ message: "Erreur serveur" });
   }
 };
+
 
 export const login = async (req, res) => {
   try {
